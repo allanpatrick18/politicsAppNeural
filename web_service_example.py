@@ -18,7 +18,8 @@
 
 import face_recognition
 from flask import Flask, jsonify, request, redirect
-
+import os
+from werkzeug.utils import secure_filename
 # You can change this to any folder on your system
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
@@ -81,6 +82,8 @@ def upload_image():
 
         if file and allowed_file(file.filename):
             # The image file seems valid! Detect faces and return the result.
+            filename = secure_filename(file.filename)
+            file.save(os.getcwd()+'/'+file.filename)
             return detect_faces_in_image(file)
 
     # If no valid image file was uploaded, show the file upload form:
