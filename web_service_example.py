@@ -15,39 +15,47 @@
 
 # NOTE: This example requires flask to be installed! You can install it with pip:
 # $ pip3 install flask
+import os
 
 import face_recognition
 from flask import Flask, jsonify, request, redirect
-import os
-from werkzeug.utils import secure_filename
+
 # You can change this to any folder on your system
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(THIS_FOLDER, 'image_uploads')
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Pre-calculated face encoding of Obama generated with face_recognition.face_encodings(img)
 list_of_politics = []
 list_of_politics_encoding = []
 politics_name = [
     {
-        'name': 'Valdir Rossoni',
+        'name': 'ROSSONI',
         'file': 'politics/valdir_rossoni.jpg',
         'encode': []
 
     },
     {
-        'name': 'João Arruda',
+        'name': 'JOÃO ARRUDA',
         'file': 'politics/joao_arruda.jpg',
         'encode': []
     },
     {
-        'name': 'Takaiama',
+        'name': 'TAKAYAMA',
         'file': 'politics/hidekazu_takayama.jpg',
         'encode': []
     },
     {
-        'name': 'Christiane Yered',
+        'name': 'CHRISTIANE DE SOUZA YARED',
         'file': 'politics/christiane_yared.jpg',
+        'encode': []
+    },
+    {
+        'name': 'ALEX CANZIANI',
+        'file': 'politics/alex_canziani.jpg',
         'encode': []
     }
 
@@ -63,9 +71,15 @@ for politic in list_of_politics:
         politic)[0]
     i += 1
 
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def secure_filename(filename):
+    n = len(os.listdir(app.config['UPLOAD_FOLDER']))
+    return '{:06d}.jpg'.format(n+1)
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -81,21 +95,25 @@ def upload_image():
             return redirect(request.url)
 
         if file and allowed_file(file.filename):
-            # The image file seems valid! Detect faces and return the result.
+            if not os.path.exists(app.config['UPLOAD_FOLDER']):
+                os.mkdir(app.config['UPLOAD_FOLDER'])
             filename = secure_filename(file.filename)
-            file.save(os.getcwd()+'/'+file.filename)
-            return detect_faces_in_image(file)
+            newfile = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(newfile)
+            # The image file seems valid! Detect faces and return the result.
+            return detect_faces_in_image(newfile)
 
     # If no valid image file was uploaded, show the file upload form:
     return '''
     <!doctype html>
-    <title>Is this a picture of Obama?</title>
-    <h1>Upload a picture and see if it's a picture one politcs registred!</h1>
+    <title>Politics face recognition</title>
+    <h1>Upload a picture and see if it's a picture of one of the registered politics!</h1>
     <form method="POST" enctype="multipart/form-data">
       <input type="file" name="file">
       <input type="submit" value="Upload">
     </form>
     '''
+
 
 @app.route('/teste', methods=['GET', 'POST'])
 def upload_image_teste():
@@ -128,7 +146,7 @@ def detect_faces_in_image(file_stream):
         # See if the first face in the uploaded image matches the known face of Obama
         for face_encode in politics_name:
             match_results = face_recognition.compare_faces(
-                [face_encode['encode']],unknown_face_encodings[0])
+                [face_encode['encode']], unknown_face_encodings[0])
             if match_results[0]:
                 politic = face_encode
                 is_one_politc = True
@@ -138,16 +156,17 @@ def detect_faces_in_image(file_stream):
     if is_one_politc is False:
         result = {
             "face_found_in_image": face_found,
-            "is_picture_one_of_registred": is_one_politc
+            "is_picture_one_of_registered": is_one_politc
         }
     else:
         result = {
             "face_found_in_image": face_found,
-            "is_picture_one_of_registred": is_one_politc,
+            "is_picture_one_of_registered": is_one_politc,
             "politics_name": politic['name']
         }
 
     return jsonify(result)
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001, debug=True)
